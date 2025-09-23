@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Eye Tracking Results</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    /* === Styles === */
+    :root {
+      --primary: #3498db;
+      --primary-dark: #2980b9;
+      --secondary: #2c3e50;
+      --accent: #e74c3c;
+      --light: #ecf0f1;
+      --dark: #2c3e50;
+      --success: #2ecc71;
+      --warning: #f39c12;
+      --gray: #95a5a6;
+      --light-gray: #f5f7fa;
+      --white: #ffffff;
+      --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      --radius: 8px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    body {
+      background-color: var(--light-gray);
+      color: var(--dark);
+      line-height: 1.6;
+      padding: 20px;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 30px;
+      padding: 20px;
+      background: var(--white);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+
+    h1 {
+      color: var(--secondary);
+      font-size: 2.2rem;
+      font-weight: 700;
+    }
+
+    h2 {
+      color: var(--secondary);
+      margin-bottom: 15px;
+      font-weight: 600;
+    }
+
+    h3 {
+      color: var(--secondary);
+      margin-bottom: 10px;
+      font-weight: 500;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 20px;
+      border-radius: var(--radius);
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.3s ease;
+      border: none;
+      text-decoration: none;
+    }
+
+    .btn-primary {
+      background-color: var(--primary);
+      color: var(--white);
+      box-shadow: var(--shadow);
+    }
+
+    .btn-primary:hover {
+      background-color: var(--primary-dark);
+      transform: translateY(-2px);
+    }
+
+    .btn-secondary {
+      background-color: var(--secondary);
+      color: var(--white);
+    }
+
+    .btn-secondary:hover:not(:disabled) {
+      background-color: #1a2530;
+    }
+
+    .btn:disabled {
+      background-color: var(--gray);
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .card {
+      background-color: var(--white);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+
+    .subject-info {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+
+    .subject-avatar {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background-color: var(--primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--white);
+      font-size: 1.5rem;
+      font-weight: bold;
+    }
+
+    .upload-container {
+      margin-bottom: 25px;
+    }
+
+    .file-input-container {
+      display: flex;
+      gap: 10px;
+    }
+
+    #fileInput {
+      flex: 1;
+      padding: 12px;
+      border: 2px dashed var(--gray);
+      border-radius: var(--radius);
+      background-color: var(--light);
+    }
+
+    .loading-spinner {
+      display: none;
+      text-align: center;
+      margin: 20px 0;
+    }
+
+    .spinner {
+      border: 4px solid rgba(0, 0, 0, 0.1);
+      border-left: 4px solid var(--primary);
+      border-radius: 50%;
+      width: 30px;
+      height: 30px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto;
+    }
+
+    @keyframes spin {
+      0% {
+        transform: rotate(0deg);
+      }
+
+      100% {
+        transform: rotate(360deg);
+      }
+    }
+
+    .nav-buttons {
+      display: flex;
+      justify-content: center;
+      gap: 15px;
+      margin: 20px 0;
+    }
+
+    .heatmap-canvas {
+      width: 100%;
+      height: 500px;
+      border-radius: var(--radius);
+      background-color: var(--light);
+      border: 1px solid #ddd;
+    }
+
+    .charts-container {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+
+    @media (max-width: 992px) {
+      .charts-container {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .chart-container {
+      background-color: var(--white);
+      padding: 20px;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+
+    .data-summary {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+
+    .summary-card {
+      background: var(--white);
+      padding: 15px;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      text-align: center;
+    }
+
+    .summary-value {
+      font-size: 2rem;
+      font-weight: bold;
+      color: var(--primary);
+      margin: 10px 0;
+    }
+
+    .analysis-points {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 15px;
+    }
+
+    .analysis-card {
+      background: var(--white);
+      padding: 15px;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      border-left: 4px solid var(--primary);
+    }
+
+    .notification {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      padding: 15px 20px;
+      background-color: var(--accent);
+      color: var(--white);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      display: none;
+      z-index: 1000;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="notification" id="notification"></div>
+  <header>
+    <h1><i class="fas fa-eye"></i> Gaze Study Visualization</h1>
+    <button id="newStudyButton" class="btn btn-primary" onclick="navigateToIndex()"><i class="fas fa-plus"></i> New
+      Study</button>
+  </header>
+
+  <!-- Subject Info -->
+  <div class="card">
+    <div class="subject-info">
+      <div class="subject-avatar" id="subjectAvatar">U</div>
+      <div class="subject-details">
+        <h2 id="subjectName">Unknown Subject</h2>
+        <p id="subjectDetails">Upload JSON data to view analysis</p>
+      </div>
+    </div>
+    <div class="upload-container">
+      <label for="fileInput"><i class="fas fa-upload"></i> Upload JSON File</label>
+      <div class="file-input-container">
+        <input type="file" id="fileInput" accept=".json">
+      </div>
+    </div>
+  </div>
+
+  <div class="loading-spinner" id="loadingSpinner">
+    <div class="spinner"></div>
+    <p>Processing data...</p>
+  </div>
+
+  <div id="dataSummary" class="data-summary" style="display:none;">
+    <div class="summary-card">
+      <div class="summary-label">Total Gaze Points</div>
+      <div class="summary-value" id="totalGazePoints">0</div>
+    </div>
+    <div class="summary-card">
+      <div class="summary-label">Images Analyzed</div>
+      <div class="summary-value" id="imagesTracked">0</div>
+    </div>
+    <div class="summary-card">
+      <div class="summary-label">Session Duration</div>
+      <div class="summary-value" id="trackingDuration">0</div>
+    </div>
+    <div class="summary-card">
+      <div class="summary-label">Avg. Fixations</div>
+      <div class="summary-value" id="avgFixations">0</div>
+    </div>
+  </div>
+
+  <div class="nav-buttons">
+    <button id="prevBtn" class="btn btn-secondary" disabled><i class="fas fa-chevron-left"></i> Previous</button>
+    <span id="imageCounter">Image 0 of 0</span>
+    <button id="nextBtn" class="btn btn-secondary" disabled>Next <i class="fas fa-chevron-right"></i></button>
+  </div>
+
+  <!-- Heatmap -->
+  <div class="card visualization-container">
+    <h2 class="chart-title">Gaze Heatmap Visualization</h2>
+    <div id="imagePlaceholder" class="image-placeholder"><i class="fas fa-image"></i>
+      <p>No image loaded</p>
+    </div>
+    <img id="stimulus" src="" style="display:none;" />
+    <canvas id="gazeCanvas" class="heatmap-canvas" style="display:none;"></canvas>
+    <div style="text-align:center; margin-top:10px;">
+      <button id="togglePathBtn" class="btn btn-secondary">Hide Gaze Path</button>
+    </div>
+    <div class="image-info"><span id="currentImageName">No image</span><span id="gazePointsCount">0 gaze points</span>
+    </div>
+  </div>
+
+  <!-- Charts -->
+  <div class="charts-container">
+    <div class="chart-container">
+      <h2 class="chart-title">Fixation Distribution</h2><canvas id="fixationChart"></canvas>
+    </div>
+    <div class="chart-container">
+      <h2 class="chart-title">Gaze Timeline</h2><canvas id="timelineChart"></canvas>
+    </div>
+  </div>
+
+  <div class="card analysis-container">
+    <h2>Data Analysis</h2>
+    <div id="analysisContent">
+      <p>Upload a JSON file to see detailed analysis.</p>
+    </div>
+  </div>
+  <footer>&copy; 2025 Eye Tracking Study Research</footer>
+
+  <script>
+    let currentData = null, currentIndex = 0, imageGazeData = {}, currentImagePath = '';
+    let showGazePath = true;
+
+    function navigateToIndex() { window.location.href = 'index.html'; }
+    function showNotification(msg, err = true) {
+      const n = document.getElementById('notification');
+      n.textContent = msg;
+      n.style.backgroundColor = err ? '#e74c3c' : '#2ecc71';
+      n.style.display = 'block';
+      setTimeout(() => { n.style.display = 'none'; }, 5000);
+    }
+
+    document.getElementById('fileInput').addEventListener('change', e => {
+      const file = e.target.files[0]; if (!file) return;
+      document.getElementById('loadingSpinner').style.display = 'block';
+      const r = new FileReader();
+      r.onload = ev => {
+        try { processData(JSON.parse(ev.target.result)); }
+        catch (err) { showNotification("JSON error: " + err.message); }
+        document.getElementById('loadingSpinner').style.display = 'none';
+      };
+      r.readAsText(file);
+    });
+
+    function processData(data) {
+      currentData = data; currentIndex = 0;
+      if (data.metadata && data.metadata.subjectName) {
+        document.getElementById('subjectName').textContent = data.metadata.subjectName;
+        document.getElementById('subjectAvatar').textContent = data.metadata.subjectName.charAt(0);
+      }
+      imageGazeData = {};
+      if (data.gazeData) {
+        data.gazeData.forEach(p => {
+          if (p.imagePath && p.imagePath !== "null") {
+            if (!imageGazeData[p.imagePath]) imageGazeData[p.imagePath] = [];
+            imageGazeData[p.imagePath].push(p);
+          }
+        });
+      }
+      updateDataSummary(data);
+      const paths = Object.keys(imageGazeData);
+      if (paths.length) { displayImage(0); createCharts(data); generateAnalysis(data); }
+      else showNotification("No gaze data found");
+    }
+
+    function updateDataSummary(data) {
+      if (!data.gazeData) return;
+      document.getElementById('dataSummary').style.display = 'grid';
+      document.getElementById('totalGazePoints').textContent = data.gazeData.length;
+      const imgs = new Set(data.gazeData.map(p => p.imagePath).filter(p => p && p !== "null"));
+      document.getElementById('imagesTracked').textContent = imgs.size;
+      const avg = (imgs.size > 0) ? (data.gazeData.length / imgs.size).toFixed(1) : 0;
+      document.getElementById('avgFixations').textContent = avg;
+      if (data.gazeData.length > 1) {
+        const d = (data.gazeData.at(-1).timestamp - data.gazeData[0].timestamp) / 1000;
+        document.getElementById('trackingDuration').textContent = d.toFixed(1);
+      }
+    }
+
+    function displayImage(i) {
+      const paths = Object.keys(imageGazeData); if (!paths.length) return;
+      if (i < 0) i = 0; if (i >= paths.length) i = paths.length - 1; currentIndex = i;
+      const path = paths[i]; currentImagePath = path; const gaze = imageGazeData[path];
+      const img = document.getElementById('stimulus'), canvas = document.getElementById('gazeCanvas');
+      document.getElementById('currentImageName').textContent = path.split('/').pop();
+      document.getElementById('gazePointsCount').textContent = gaze.length + " gaze points";
+      document.getElementById('imageCounter').textContent = `Image ${i + 1} of ${paths.length}`;
+      document.getElementById('prevBtn').disabled = i === 0;
+      document.getElementById('nextBtn').disabled = i === paths.length - 1;
+      document.getElementById("imagePlaceholder").style.display = "none"; canvas.style.display = "block";
+      img.onload = () => updateHeatmap(img, gaze, canvas);
+      img.onerror = () => { document.getElementById("imagePlaceholder").style.display = "flex"; canvas.style.display = "none"; };
+      img.src = path;
+    }
+
+    // === ROI Detection from Fixations ===
+    function detectROIsFromFixations(gaze) {
+      const fixations = computeFixations(gaze);
+      return fixations.map((f, idx) => ({
+        x: f.x,
+        y: f.y,
+        r: Math.min(60, 10 + f.duration * 10),
+        label: `Fixation ${idx + 1}`
+      }));
+    }
+
+    function updateHeatmap(img, gaze, canvas) {
+      const ctx = canvas.getContext("2d");
+      canvas.width = img.width;
+      canvas.height = img.height;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0, img.width, img.height);
+      if (!gaze || !gaze.length) return;
+
+      function getXY(p) {
+        if (p.gazePoint?.relative)
+          return [p.gazePoint.relative.x * canvas.width, p.gazePoint.relative.y * canvas.height];
+        else if (p.x !== undefined && p.y !== undefined) {
+          const sx = canvas.width / img.naturalWidth, sy = canvas.height / img.naturalHeight;
+          return [p.x * sx, p.y * sy];
+        }
+        return [null, null];
+      }
+
+      // === Gaze path ===
+      if (showGazePath) {
+        ctx.beginPath();
+        gaze.forEach((p, i) => {
+          const [x, y] = getXY(p);
+          if (x === null) return;
+          if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        });
+        ctx.strokeStyle = "rgba(0,0,0,0.6)";
+        ctx.lineWidth = 3;
+        ctx.stroke();
+      }
+
+      // === Δt (seconds) between gaze points ===
+      for (let i = 0; i < gaze.length - 1; i++) {
+        const [x1, y1] = getXY(gaze[i]);
+        const [x2, y2] = getXY(gaze[i + 1]);
+        if (x1 === null || x2 === null) continue;
+
+        const dt = ((gaze[i + 1].timestamp - gaze[i].timestamp) / 1000).toFixed(1);
+        const midX = (x1 + x2) / 2;
+        const midY = (y1 + y2) / 2;
+
+        ctx.font = "14px Arial";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+
+        // White outline
+        ctx.strokeStyle = "white";
+        ctx.lineWidth = 4;
+        ctx.strokeText(dt + "s", midX, midY);
+
+        // Black text
+        ctx.fillStyle = "black";
+        ctx.fillText(dt + "s", midX, midY);
+      }
+
+      // === Gaze points ===
+      gaze.forEach((p, i) => {
+        const [x, y] = getXY(p); if (x === null) return;
+        ctx.beginPath();
+        if (i === 0) { ctx.fillStyle = "red"; ctx.arc(x, y, 10, 0, 2 * Math.PI); }
+        else if (i === gaze.length - 1) { ctx.fillStyle = "blue"; ctx.arc(x, y, 10, 0, 2 * Math.PI); }
+        else { ctx.fillStyle = "pink"; ctx.arc(x, y, 5, 0, 2 * Math.PI); }
+        ctx.fill();
+      });
+
+      // === ROIs from fixations ===
+      const rois = detectROIsFromFixations(gaze);
+      rois.forEach(roi => {
+        ctx.beginPath();
+        ctx.arc(roi.x, roi.y, roi.r, 0, 2 * Math.PI);
+        ctx.strokeStyle = "rgba(255,165,0,0.9)";
+        ctx.lineWidth = 2; ctx.stroke();
+        ctx.fillStyle = "orange"; ctx.font = "12px Arial"; ctx.textAlign = "center";
+        ctx.fillText(roi.label, roi.x, roi.y - roi.r - 5);
+      });
+    }
+
+
+    function computeFixations(data, r = 30, minDur = 100) {
+      let f = [], start = 0;
+      for (let i = 1; i < data.length; i++) {
+        const dx = data[i].x - data[start].x, dy = data[i].y - data[start].y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        const dur = data[i].timestamp - data[start].timestamp;
+        if (dist > r && dur >= minDur) {
+          f.push({ duration: dur / 1000, x: data[start].x, y: data[start].y });
+          start = i;
+        }
+      }
+      return f;
+    }
+
+    function computeSaccades(data) {
+      let s = [];
+      for (let i = 1; i < data.length; i++) {
+        const dx = data[i].x - data[i - 1].x, dy = data[i].y - data[i - 1].y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        const dt = (data[i].timestamp - data[i - 1].timestamp) / 1000;
+        if (dt > 0) { s.push({ latency: dt, velocity: dist / dt }); }
+      }
+      return s;
+    }
+
+    function computePupilStats(data) {
+      const p = data.map(p => p.pupilSize).filter(v => v !== undefined);
+      if (!p.length) return null;
+      const avg = p.reduce((a, b) => a + b, 0) / p.length;
+      return { avg: avg.toFixed(2), min: Math.min(...p), max: Math.max(...p) };
+    }
+
+    function computeBlinks(data) {
+      let b = 0, inB = false;
+      for (let i = 0; i < data.length; i++) {
+        if (!data[i].pupilSize && !inB) { b++; inB = true; }
+        else if (data[i].pupilSize) inB = false;
+      }
+      const dur = (data.at(-1).timestamp - data[0].timestamp) / 1000;
+      return (b / (dur / 60)).toFixed(1);
+    }
+
+    function analyzeROIs(gaze, rois) {
+      const res = [];
+      rois.forEach(roi => {
+        let time = 0, count = 0;
+        for (let i = 0; i < gaze.length - 1; i++) {
+          const p = gaze[i], n = gaze[i + 1];
+          if (!p.x || !p.y) continue;
+          const dx = p.x - roi.x, dy = p.y - roi.y;
+          if (Math.sqrt(dx * dx + dy * dy) <= roi.r) {
+            time += (n.timestamp - p.timestamp) / 1000;
+            count++;
+          }
+        }
+        res.push({ label: roi.label, count, duration: time.toFixed(2) });
+      });
+      return res;
+    }
+
+    function createCharts(data) {
+      if (!data.gazeData || !data.gazeData.length) return;
+      const fixationCtx = document.getElementById('fixationChart').getContext('2d');
+      const imageCounts = {};
+      data.gazeData.forEach(pt => {
+        if (!pt.imagePath || pt.imagePath === "null") return;
+        const name = pt.imagePath.split('/').pop();
+        if (!imageCounts[name]) imageCounts[name] = 0;
+        imageCounts[name]++;
+      });
+      new Chart(fixationCtx, {
+        type: 'doughnut',
+        data: {
+          labels: Object.keys(imageCounts),
+          datasets: [{ data: Object.values(imageCounts), backgroundColor: Object.keys(imageCounts).map((_, i) => `hsla(${(i * 137.5) % 360},70%,65%,0.7)`) }]
+        },
+        options: { plugins: { legend: { position: 'right' } } }
+      });
+
+      const timelineCtx = document.getElementById('timelineChart').getContext('2d');
+      const ts = data.gazeData.map(p => (p.timestamp / 1000).toFixed(1));
+      const xs = data.gazeData.map(p => p.x ?? (p.gazePoint?.relative?.x ?? 0));
+      const ys = data.gazeData.map(p => p.y ?? (p.gazePoint?.relative?.y ?? 0));
+      new Chart(timelineCtx, { type: 'line', data: { labels: ts, datasets: [{ label: 'X', data: xs, borderColor: 'red' }, { label: 'Y', data: ys, borderColor: 'blue' }] } });
+    }
+
+    function generateAnalysis(data) {
+      if (!data.gazeData || !data.gazeData.length) { analysisContent.innerHTML = "<p>No data</p>"; return; }
+      const fix = computeFixations(data.gazeData), sac = computeSaccades(data.gazeData), pupil = computePupilStats(data.gazeData), blink = computeBlinks(data.gazeData);
+      const rois = detectROIsFromFixations(data.gazeData);
+      const roiStats = analyzeROIs(data.gazeData, rois);
+      let html = `<div class="analysis-section"><h3>Eye Movement Metrics</h3><div class="analysis-points">`;
+      html += `<div class="analysis-card"><h4>Fixations</h4><p>${fix.length} fixations, avg ${(fix.reduce((a, f) => a + f.duration, 0) / fix.length || 0).toFixed(2)}s</p></div>`;
+      html += `<div class="analysis-card"><h4>Saccades</h4><p>Avg latency ${(sac.reduce((a, s) => a + s.latency, 0) / sac.length || 0).toFixed(2)}s, Avg velocity ${(sac.reduce((a, s) => a + s.velocity, 0) / sac.length || 0).toFixed(1)} px/s</p></div>`;
+      html += `<div class="analysis-card"><h4>Pupil Size</h4><p>${pupil ? `Avg ${pupil.avg}, Range ${pupil.min}-${pupil.max}` : "N/A"}</p></div>`;
+      html += `<div class="analysis-card"><h4>Blink Rate</h4><p>${blink} blinks/min</p></div>`;
+      roiStats.forEach(r => { html += `<div class="analysis-card"><h4>ROI: ${r.label}</h4><p>${r.count} fixations, ${r.duration}s inside</p></div>`; });
+      html += `</div></div>`;
+      document.getElementById('analysisContent').innerHTML = html;
+    }
+
+    document.getElementById('prevBtn').onclick = () => { if (currentIndex > 0) displayImage(currentIndex - 1); }
+    document.getElementById('nextBtn').onclick = () => { const paths = Object.keys(imageGazeData); if (currentIndex < paths.length - 1) displayImage(currentIndex + 1); }
+    document.getElementById('togglePathBtn').onclick = () => { showGazePath = !showGazePath; displayImage(currentIndex); }
+  </script>
+</body>
+
+</html>
