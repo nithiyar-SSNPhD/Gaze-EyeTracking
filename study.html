@@ -180,9 +180,9 @@
 
         const images = [
             { src: 'assets/1.png', duration: 10000 },
-            { src: 'assets/3.png', duration: 10000 },
+            { src: 'assets/2.png', duration: 10000 },
+            { src: 'assets/3.webp', duration: 10000 },
             { src: 'assets/4.webp', duration: 10000 },
-            { src: 'assets/5.webp', duration: 10000 },
         ];
 
 function initializeWebGazer() {
@@ -192,27 +192,49 @@ function initializeWebGazer() {
         webgazer.params.showFaceOverlay = false;
         webgazer.params.showFaceFeedbackBox = false;    
 
-        webgazer.setGazeListener((data, elapsedTime) => {
-            if (!isPaused && data !== null) {
-                const gazeDotElement = document.querySelector('#webgazerGazeDot');
-                const imageContainer = document.getElementById('imageContainer');
-                const rect = imageContainer.getBoundingClientRect();
+        // --- Replace your setGazeListener() block with this one ---
+webgazer.setGazeListener((data, elapsedTime) => {
+    if (!isPaused && data !== null) {
 
-                const relativeX = data.x - rect.left;
-                const relativeY = data.y - rect.top;
+        let gazeDotElement = document.querySelector('#webgazerGazeDot');
+        if (!gazeDotElement) {
+            gazeDotElement = document.createElement('div');
+            gazeDotElement.id = 'webgazerGazeDot';
+            gazeDotElement.className = 'webgazerGazeDot';
+            gazeDotElement.style.position = 'absolute';
+            gazeDotElement.style.width = '8px';
+            gazeDotElement.style.height = '8px';
+            gazeDotElement.style.borderRadius = '50%';
+            gazeDotElement.style.pointerEvents = 'none';
+            document.body.appendChild(gazeDotElement);
+        }
 
-                if (relativeX >= 0 && relativeY >= 0 && relativeX <= rect.width && relativeY <= rect.height) {
-                    gazeDotElement.style.transform = `translate3d(${relativeX}px, ${relativeY}px, 0)`;
-                }
+        const imageContainer = document.getElementById('imageContainer');
+        const rect = imageContainer.getBoundingClientRect();
 
-                // Push gaze data in the desired JSON format
-                gazeData.push({ 
-                    imagePath: currentImageIndex < images.length ? images[currentImageIndex].src : null,
-                    transform: { x: relativeX, y: relativeY },
-                    time: elapsedTime
-                });
-            }
-        }).begin();
+        let absoluteX = data.x - rect.left;
+        let absoluteY = data.y - rect.top;
+
+        absoluteX = Math.max(0, Math.min(absoluteX, rect.width));
+        absoluteY = Math.max(0, Math.min(absoluteY, rect.height));
+
+        gazeDotElement.style.transform =
+            `translate3d(${rect.left + absoluteX}px, ${rect.top + absoluteY}px, 0)`;
+
+        // FIX APPLIED HERE 🔥🔥🔥
+        gazeData.push({
+            imagePath:
+                currentImageIndex === 0
+                    ? images[0].src
+                    : images[Math.min(currentImageIndex - 1, images.length - 1)].src,
+            transform: { x: absoluteX, y: absoluteY },
+            time: elapsedTime
+        });
+    }
+}).begin();
+
+
+
 
         resolve();
     });
@@ -250,29 +272,44 @@ function initializeWebGazer() {
             });
             
             // Then create the final data structure
-            const modifiedGazeData = {
-                metadata: {
-                    timestamp: new Date().toISOString(),
-                    subjectName: subjectName,
-                    viewport: {
-                        width: viewportWidth,
-                        height: viewportHeight
-                    },
-                    images: imagesMetadata
-                },
-                gazeData: gazeData.map(entry => ({
-                    imagePath: entry.imagePath,
-                    gazePoint: {
-                        absolute: entry.transform,
-                        relative: {
-                            x: entry.transform.x / viewportWidth,
-                            y: entry.transform.y / viewportHeight
-                        }
-                    },
-                    timestamp: entry.time,
-                    subjectName: subjectName
-                }))
-            };
+           // --- Replace the relative calculation inside downloadData() with this updated mapping ---
+// Find the section where you build modifiedGazeData.gazeData = gazeData.map(...)
+const modifiedGazeData = {
+    metadata: {
+        timestamp: new Date().toISOString(),
+        subjectName: subjectName,
+        viewport: {
+            width: viewportWidth,
+            height: viewportHeight
+        },
+        images: imagesMetadata
+    },
+    gazeData: gazeData.map(entry => {
+        // Determine image metadata (fallbacks)
+        const imgMeta = imagesMetadata[entry.imagePath] || {};
+        const imgDisplayWidth = imgMeta.displayWidth || viewportWidth;
+        const imgDisplayHeight = imgMeta.displayHeight || viewportHeight;
+
+        // absolute coordinates are already clamped to [0, imgDisplayWidth/Height]
+        const absX = (entry.transform && typeof entry.transform.x === 'number') ? entry.transform.x : null;
+        const absY = (entry.transform && typeof entry.transform.y === 'number') ? entry.transform.y : null;
+
+        // compute relative coordinates with respect to the image display size
+        const relX = (absX !== null) ? (absX / imgDisplayWidth) : null;
+        const relY = (absY !== null) ? (absY / imgDisplayHeight) : null;
+
+        return {
+            imagePath: entry.imagePath,
+            gazePoint: {
+                absolute: { x: absX, y: absY },
+                relative: { x: relX, y: relY }
+            },
+            timestamp: entry.time,
+            subjectName: subjectName
+        };
+    })
+};
+
 
                 const json = JSON.stringify(modifiedGazeData, null, 2);
                 const blob = new Blob([json], { type: 'application/json' });
